@@ -6,6 +6,7 @@ const {
   user,
   password
 } = require('./config')
+const {isObject} = require('../utils')
 
 function connect () {
   return mysql.createConnection({
@@ -54,7 +55,16 @@ function queryOne (sql) {
   })
 }
 
+function insert (model, tableName) {
+  return new Promise((resolve, reject) => {
+    if (!isObject(model)) {
+      reject('添加图书对象不合法')
+    }
+  })
+}
+
 module.exports = {
   querySql,
-  queryOne
+  queryOne,
+  insert
 }

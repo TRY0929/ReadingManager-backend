@@ -9,5 +9,7 @@ module.exports = {
   debug: true,
   PWD_SALT: 'admin_imooc_node',
   PRIVATE_KEY: 'try0929',
-  JWT_EXPIRED: 60 * 60
+  JWT_EXPIRED: 60 * 60,
+  MIME_TYPE_EPUB: 'application/epub+zip',
+  UPLOAD_URL: 'http://localhost:8089/admin-upload-book'
 }
