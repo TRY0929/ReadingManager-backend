@@ -1,4 +1,4 @@
-const { MIME_TYPE_EPUB, UPLOAD_URL, UPLOAD_PATH } = require('../utils/constant')
+const { MIME_TYPE_EPUB, UPLOAD_URL, UPLOAD_PATH, OLD_UPLOAD_URL } = require('../utils/constant')
 const fs = require('fs')
 const path = require('path')
 const Epub = require('../utils/epub')
@@ -215,6 +215,7 @@ class Book {
 
     const ncxFilePath =  Book.genPath(`${this.unzipPath}/${getNcxFilePath()}`)
     const ncxDir = path.dirname(ncxFilePath).replace(UPLOAD_PATH, '')
+    const unzipPath = this.unzipPath
     if (fs.existsSync(ncxFilePath)) {
       return new Promise((resolve, reject) => {
         // 先拿到刚刚的ncx文件，里面放的是目录的结构(xml文件)
@@ -247,21 +248,15 @@ class Book {
               // chapter.text = `${UPLOAD_URL}/unzip/${this.fileName}/${chapter.href}`
               // 章节标题
               chapter.label = chapter.navLabel.text || ''
+              chapter.href = `${ncxDir}/${src}`.replace(unzipPath, '')
+              chapter.id = src
               chapter.fileName = this.fileName //书名
               chapter.navId = chapter['$'].id //章节id
               chapter.order = index + 1 //章节阅读顺序
               chapters.push(chapter)
             })
-            const chapterTree = []
-            chapters.forEach(ch => {
-              ch.children = []
-              if (ch.pid === '') {
-                chapterTree.push(ch)
-              } else {
-                const parent = chapters.find(item => item.navId === ch.pid)
-                parent.children.push(ch)
-              }
-            })
+            const chapterTree = Book.genContentsTree(chapters)
+            
             resolve({ chapters, chapterTree })
           }
         })
@@ -271,6 +266,21 @@ class Book {
     }
   }
 
+  // 获取目录树
+  static genContentsTree (chapters) {
+    const chapterTree = []
+    chapters.forEach(ch => {
+      ch.children = []
+      if (ch.pid === '') {
+        chapterTree.push(ch)
+      } else {
+        const parent = chapters.find(item => item.navId === ch.pid)
+        parent.children.push(ch)
+      }
+    })
+    return chapterTree
+  }
+
   // 静态方法 生成绝对路径
   static genPath(path) {
     // 若路径最没有带 / 则加上
@@ -278,6 +288,79 @@ class Book {
       path = '/' + path
     }
     return `${UPLOAD_PATH}${path}`
+  }
+
+  // 过滤掉不需要存在数据库里的信息
+  toDb() {
+    return {
+      fileName: this.fileName,
+      cover: this.coverPath,
+      title: this.title,
+      author: this.author,
+      publisher: this.publisher,
+      bookId: this.fileName,
+      language: this.language,
+      rootFile: this.rootFile,
+      originalName: this.originalName,
+      filePath: this.filePath,
+      unzipPath: this.unzipPath,
+      coverPath: this.coverPath,
+      createUser: this.username,
+      createDt: this.createDt,
+      updateDt: this.updateDt,
+      updateType: this.updateType
+    }
+  }
+
+  getContents () {
+    return this.contents
+  }
+
+  // 从本地删除数据
+  reset () {
+    if (Book.pathExists(this.filePath)) {
+      console.log('删除电子书文件...')
+      fs.unlinkSync(Book.genPath(this.filePath))
+    }
+    if (Book.pathExists(this.coverPath)) {
+      console.log('删除封面...')
+      fs.unlinkSync(Book.genPath(this.coverPath))
+    }
+    if (Book.pathExists(this.unzipPath)) {
+      console.log('删除解压文件...')
+      fs.rmdirSync(Book.genPath(this.unzipPath), { recursive: true })
+    }
+  }
+
+  // 判断路径是否存在
+  static pathExists (path) {
+    if (path.startsWith(UPLOAD_PATH)) {
+      return fs.existsSync(path)
+    } else {
+      return fs.existsSync(Book.genPath(path))
+    }
+  }
+
+  // 获取图片url(新老图书地址兼容)
+  static getCoverUrl (book) {
+    const { cover } = book
+    if (cover) {
+      if (+book.updateType === 0) {
+        if (cover.startsWith('/')) {
+          return `${OLD_UPLOAD_URL}${cover}`
+        } else {
+          return `${OLD_UPLOAD_URL}/${cover}`
+        }
+      } else {
+        if (cover.startsWith('/')) {
+          return `${UPLOAD_URL}${cover}`
+        } else {
+          return `${UPLOAD_URL}/${cover}`
+        }
+      }
+    } else {
+      return null
+    }
   }
 }
 

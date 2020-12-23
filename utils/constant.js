@@ -1,7 +1,9 @@
 const { env } = require('./env')
 const UPLOAD_PATH = env === 'dev' ? '/test/upload/admin-upload-book' : ''
+const OLD_UPLOAD_URL = env === 'dev' ? 'http://localhost:8089/book/res/img' : ''
 
 module.exports = {
+  OLD_UPLOAD_URL,
   UPLOAD_PATH,
   CODE_ERROR: -1,
   CODE_SUCCESS: 0,
